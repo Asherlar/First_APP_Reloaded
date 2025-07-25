@@ -51,9 +51,17 @@ private val requestPermissionLauncher = registerForActivityResult(
 - Lifecycle awareness para manejo automático de recursos
 
 ### **Almacenamiento**
-- Ubicación: `getExternalFilesDir(null)`
-- Formato: `scan_yyyy-MM-dd-HH-mm-ss-SSS.jpg`
-- No requiere permisos adicionales de almacenamiento
+- **Ubicación Principal**: `/storage/emulated/0/Android/data/com.example.firstappreloaded/files/`
+- **Ubicación Fallback**: `/data/data/com.example.firstappreloaded/files/`
+- **Formato**: `scan_yyyy-MM-dd-HH-mm-ss-SSS.jpg`
+- **Permisos**: No requiere permisos adicionales de almacenamiento
+- **Privacidad**: Solo accesible por la aplicación
+- **Limpieza**: Se elimina automáticamente al desinstalar la app
+
+### **Acceso a las Fotografías**
+- **Ruta del Explorador**: `Almacenamiento Interno > Android > data > com.example.firstappreloaded > files`
+- **Código de referencia**: `getExternalFilesDir(null) ?: filesDir`
+- **Creación automática**: El directorio se crea si no existe
 
 ## 📱 Flujo de Usuario
 

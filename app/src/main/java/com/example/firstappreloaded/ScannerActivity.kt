@@ -70,29 +70,60 @@ class ScannerActivity : ComponentActivity() {
     }
     
     private fun setupCamera() {
+        // Verificar estado del almacenamiento
+        checkStorageStatus()
+        
         setContent {
             FirstAppReloadedTheme {
                 ScannerScreen(
                     onBackClick = { finish() },
-                    onCaptureClick = { capturePhoto() }
+                    onCaptureClick = { capturePhoto() },
+                    onCheckFilesClick = { checkSavedFiles() }
                 )
             }
         }
     }
     
-    private fun capturePhoto() {
-        val imageCapture = imageCapture ?: return
+    private fun checkStorageStatus() {
+        val documentsDir = getDocumentsDirectory()
+        Log.i("StorageCheck", "=== ESTADO DEL ALMACENAMIENTO ===")
+        Log.i("StorageCheck", "Directorio seleccionado: ${documentsDir.absolutePath}")
+        Log.i("StorageCheck", "Directorio existe: ${documentsDir.exists()}")
+        Log.i("StorageCheck", "Es escribible: ${documentsDir.canWrite()}")
+        Log.i("StorageCheck", "Espacio libre: ${documentsDir.freeSpace / (1024*1024)} MB")
         
-        // Create time stamped name and MediaStore entry
+        // También verificar otros directorios candidatos
+        val externalFilesDir = getExternalFilesDir(null)
+        if (externalFilesDir != null) {
+            Log.i("StorageCheck", "External files dir: ${externalFilesDir.absolutePath}")
+            Log.i("StorageCheck", "External dir existe: ${externalFilesDir.exists()}")
+        } else {
+            Log.w("StorageCheck", "External files dir es NULL")
+        }
+        
+        Log.i("StorageCheck", "Internal files dir: ${filesDir.absolutePath}")
+        Log.i("StorageCheck", "Internal dir existe: ${filesDir.exists()}")
+        Log.i("StorageCheck", "================================")
+    }
+    
+    private fun capturePhoto() {
+        val imageCapture = imageCapture ?: run {
+            Log.e("CameraCapture", "ImageCapture no está inicializado")
+            Toast.makeText(this, "Cámara no está lista", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // Create time stamped name
         val name = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.getDefault())
             .format(System.currentTimeMillis())
         
-        // Ensure directory exists and handle null case
-        val outputDir = getExternalFilesDir(null) ?: filesDir
-        if (!outputDir.exists()) {
-            outputDir.mkdirs()
-        }
+        // Try multiple directory options
+        val outputDir = getDocumentsDirectory()
         val outputFile = File(outputDir, "scan_$name.jpg")
+        
+        Log.d("CameraCapture", "Intentando guardar en: ${outputFile.absolutePath}")
+        Log.d("CameraCapture", "Directorio existe: ${outputDir.exists()}")
+        Log.d("CameraCapture", "Directorio es escribible: ${outputDir.canWrite()}")
         
         val outputFileOptions = ImageCapture.OutputFileOptions.Builder(outputFile).build()
         
@@ -102,21 +133,89 @@ class ScannerActivity : ComponentActivity() {
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onError(exception: ImageCaptureException) {
-                    Log.e("CameraCapture", "Photo capture failed: ${exception.message}", exception)
-                    Toast.makeText(
-                        this@ScannerActivity, 
-                        "Error al capturar imagen: ${exception.message}", 
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    val errorMsg = "Error al capturar: ${exception.message}"
+                    Log.e("CameraCapture", errorMsg, exception)
+                    Log.e("CameraCapture", "Ruta intentada: ${outputFile.absolutePath}")
+                    Toast.makeText(this@ScannerActivity, errorMsg, Toast.LENGTH_LONG).show()
                 }
                 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val msg = "Documento escaneado guardado: ${output.savedUri}"
-                    Toast.makeText(this@ScannerActivity, "Documento guardado exitosamente", Toast.LENGTH_SHORT).show()
-                    Log.d("CameraCapture", msg)
+                    val savedPath = output.savedUri?.path ?: outputFile.absolutePath
+                    val successMsg = "Documento guardado en: $savedPath"
+                    Log.d("CameraCapture", successMsg)
+                    Log.d("CameraCapture", "Archivo existe: ${outputFile.exists()}")
+                    Log.d("CameraCapture", "Tamaño archivo: ${outputFile.length()} bytes")
+                    
+                    Toast.makeText(
+                        this@ScannerActivity, 
+                        "✅ Documento guardado exitosamente\n📍 ${outputFile.name}", 
+                        Toast.LENGTH_LONG
+                    ).show()
+                    
+                    // Optional: Show full path in log for debugging
+                    Log.i("CameraCapture", "Ruta completa: ${outputFile.absolutePath}")
                 }
             }
         )
+    }
+    
+    private fun getDocumentsDirectory(): File {
+        // Priority order for saving documents
+        val candidates = listOf(
+            // 1. External files directory (preferred)
+            getExternalFilesDir(null),
+            // 2. External files directory with Documents subfolder
+            getExternalFilesDir("Documents"),
+            // 3. Internal files directory (fallback)
+            filesDir,
+            // 4. Cache directory (last resort)
+            cacheDir
+        )
+        
+        for (dir in candidates) {
+            if (dir != null && (dir.exists() || dir.mkdirs()) && dir.canWrite()) {
+                Log.d("CameraCapture", "Usando directorio: ${dir.absolutePath}")
+                return dir
+            }
+        }
+        
+        // If all else fails, use internal files directory
+        val fallbackDir = filesDir
+        if (!fallbackDir.exists()) {
+            fallbackDir.mkdirs()
+        }
+        Log.w("CameraCapture", "Usando directorio de emergencia: ${fallbackDir.absolutePath}")
+        return fallbackDir
+    }
+    
+    private fun checkSavedFiles() {
+        val documentsDir = getDocumentsDirectory()
+        val files = documentsDir.listFiles { file -> 
+            file.isFile && file.name.startsWith("scan_") && file.name.endsWith(".jpg")
+        }
+        
+        if (files.isNullOrEmpty()) {
+            Toast.makeText(this, "No se encontraron documentos guardados", Toast.LENGTH_LONG).show()
+            Log.i("FileCheck", "No hay archivos en: ${documentsDir.absolutePath}")
+        } else {
+            val fileList = files.sortedByDescending { it.lastModified() }
+                .take(5) // Mostrar los 5 más recientes
+                .joinToString("\n") { "${it.name} (${it.length()} bytes)" }
+            
+            Toast.makeText(
+                this, 
+                "📁 Archivos encontrados (${files.size}):\n$fileList\n\nUbicación: ${documentsDir.name}",
+                Toast.LENGTH_LONG
+            ).show()
+            
+            Log.i("FileCheck", "=== ARCHIVOS GUARDADOS ===")
+            Log.i("FileCheck", "Directorio: ${documentsDir.absolutePath}")
+            Log.i("FileCheck", "Total archivos: ${files.size}")
+            files.forEach { file ->
+                Log.i("FileCheck", "- ${file.name} | ${file.length()} bytes | ${java.util.Date(file.lastModified())}")
+            }
+            Log.i("FileCheck", "========================")
+        }
     }
     
     override fun onDestroy() {
@@ -128,10 +227,10 @@ class ScannerActivity : ComponentActivity() {
 @Composable
 fun ScannerScreen(
     onBackClick: () -> Unit = {},
-    onCaptureClick: () -> Unit = {}
+    onCaptureClick: () -> Unit = {},
+    onCheckFilesClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
     
@@ -256,6 +355,22 @@ fun ScannerScreen(
                     fontSize = 24.sp
                 )
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Botón temporal para verificar archivos guardados
+            OutlinedButton(
+                onClick = onCheckFilesClick,
+                modifier = Modifier.padding(horizontal = 16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color.White
+                )
+            ) {
+                Text(
+                    text = "📁 Verificar Archivos",
+                    fontSize = 12.sp
+                )
+            }
         }
     }
 }
@@ -265,18 +380,18 @@ fun CameraPreview(
     modifier: Modifier = Modifier,
     onCameraReady: (ImageCapture) -> Unit
 ) {
-    val context = LocalContext.current
+    val composableContext = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     
     AndroidView(
-        factory = { context ->
-            PreviewView(context).apply {
+        factory = { factoryContext ->
+            PreviewView(factoryContext).apply {
                 scaleType = PreviewView.ScaleType.FILL_CENTER
             }
         },
         modifier = modifier,
         update = { previewView ->
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(composableContext)
             cameraProviderFuture.addListener({
                 try {
                     val cameraProvider = cameraProviderFuture.get()
@@ -315,7 +430,7 @@ fun CameraPreview(
                 } catch (exc: Exception) {
                     Log.e("CameraPreview", "Camera provider initialization failed", exc)
                 }
-            }, ContextCompat.getMainExecutor(context))
+            }, ContextCompat.getMainExecutor(composableContext))
         }
     )
 }
