@@ -32,6 +32,10 @@ class MainActivity : ComponentActivity() {
                             val intent = Intent(this, ScannerActivity::class.java)
                             startActivity(intent)
                         },
+                        onGalleryClick = {
+                            val intent = Intent(this, GalleryActivity::class.java)
+                            startActivity(intent)
+                        },
                         onExitClick = {
                             finishAffinity()
                             exitProcess(0)
@@ -47,6 +51,7 @@ class MainActivity : ComponentActivity() {
 fun MainMenu(
     modifier: Modifier = Modifier,
     onScanClick: () -> Unit = {},
+    onGalleryClick: () -> Unit = {},
     onExitClick: () -> Unit = {}
 ) {
     Column(
@@ -76,6 +81,23 @@ fun MainMenu(
         ) {
             Text(
                 text = "Escanear Archivo",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        
+        Button(
+            onClick = onGalleryClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .padding(vertical = 8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary
+            )
+        ) {
+            Text(
+                text = "📁 Galería",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium
             )

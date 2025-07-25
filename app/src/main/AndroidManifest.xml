@@ -32,6 +32,11 @@
             android:exported="false"
             android:label="Escanear Archivo"
             android:theme="@style/Theme.FirstAppReloaded" />
+        <activity
+            android:name=".GalleryActivity"
+            android:exported="false"
+            android:label="Galería de Documentos"
+            android:theme="@style/Theme.FirstAppReloaded" />
     </application>
 
 </manifest>

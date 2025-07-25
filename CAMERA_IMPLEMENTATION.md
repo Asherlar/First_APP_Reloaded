@@ -131,10 +131,11 @@ implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
    - Corrección de perspectiva
    - Mejora de contraste y brillo
 
-2. **Galería de Documentos**
-   - Lista de documentos escaneados
-   - Vista previa de imágenes
+2. **Mejoras de Galería**
+   - Vista detallada al tocar documento
    - Opciones de compartir/eliminar
+   - Búsqueda y filtros por fecha
+   - Selección múltiple de documentos
 
 3. **Configuraciones Avanzadas**
    - Resolución de captura ajustable
@@ -147,7 +148,15 @@ implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
 - ✅ **Permisos dinámicos**: IMPLEMENTADA  
 - ✅ **Guardado de archivos**: IMPLEMENTADA
 - ✅ **Interfaz de usuario**: MEJORADA
+- ✅ **Galería de documentos**: IMPLEMENTADA
 - ❌ **Procesamiento de imágenes**: PENDIENTE
-- ❌ **Galería de documentos**: PENDIENTE
 
-La funcionalidad básica de captura de cámara está completamente implementada y funcional.
+### **🆕 Nueva Funcionalidad: Galería de Documentos**
+- **Botón de galería** en pantalla principal
+- **Vista en grid** de 2 columnas 
+- **Miniaturas optimizadas** de documentos
+- **Información detallada** (fecha, tamaño)
+- **Estados de UI** (carga, vacío, contenido)
+- **Navegación integrada** con el resto de la app
+
+La funcionalidad básica de captura de cámara está completamente implementada y funcional, junto con una galería completa para visualizar los documentos escaneados.
